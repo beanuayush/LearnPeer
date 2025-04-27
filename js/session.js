@@ -23,6 +23,8 @@ let isVideoEnabled = true;
 let isAudioEnabled = true;
 let isScreenSharing = false;
 let screenStream;
+let pendingCandidates = [];
+let remoteDescriptionSet = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -112,10 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === 'added') {
-                            console.log('New ICE candidate received');
                             const candidate = new RTCIceCandidate(change.doc.data());
-                            peerConnection.addIceCandidate(candidate)
-                                .catch(err => console.error('Error adding ICE candidate:', err));
+                            if (remoteDescriptionSet) {
+                                peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding ICE candidate:', err));
+                            } else {
+                                pendingCandidates.push(candidate);
+                            }
                         }
                     });
                 });
@@ -218,6 +222,12 @@ async function handleTeacherConnection() {
             peerConnection.setRemoteDescription(answerDescription);
         }
     });
+
+    remoteDescriptionSet = true;
+    pendingCandidates.forEach(candidate => {
+        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding queued ICE candidate:', err));
+    });
+    pendingCandidates = [];
 }
 
 // Handle student's connection
@@ -271,6 +281,12 @@ async function handleStudentConnection() {
         console.error('Student: Error in handleStudentConnection:', error);
         throw error;
     }
+
+    remoteDescriptionSet = true;
+    pendingCandidates.forEach(candidate => {
+        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding queued ICE candidate:', err));
+    });
+    pendingCandidates = [];
 }
 
 // Setup control buttons
