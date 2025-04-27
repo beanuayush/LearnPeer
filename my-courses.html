@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Courses - LearnPeer</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-container">
+            <nav class="nav-links">
+                <a href="discover.html">Discover</a>
+                <a href="teach.html">Teach</a>
+                <a href="my-courses.html" class="active">My Courses</a>
+                <a href="my-teaching.html">My Teaching</a>
+                <a href="chat.html" class="chat-link">
+                    <i class="fas fa-comments"></i>
+                    <span class="notification-badge hidden">0</span>
+                </a>
+            </nav>
+            <div class="auth-content">
+                <div class="auth-links" id="authLinks">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="signup.html" class="btn-signup">Sign Up</a>
+                </div>
+                <div class="user-menu hidden" id="userMenu">
+                    <a href="profile.html" class="btn-profile">Profile</a>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="courses-container">
+        <section class="courses-section">
+            <h1>My Booked Sessions</h1>
+            <div class="courses-grid">
+                <!-- Courses will be dynamically added here -->
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading your sessions...</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Template for course card -->
+    <template id="courseCardTemplate">
+        <div class="course-card">
+            <div class="course-info">
+                <div class="course-header">
+                    <h3 class="subject-name"></h3>
+                    <p class="teacher-name"></p>
+                </div>
+                <div class="session-details">
+                    <p class="session-date">
+                        <i class="fas fa-calendar"></i>
+                        <span class="date-display"></span>
+                    </p>
+                    <p class="session-duration">
+                        <i class="fas fa-clock"></i>
+                        <span class="duration-display"></span>
+                    </p>
+                    <p class="session-amount">
+                        <i class="fas fa-rupee-sign"></i>
+                        <span class="amount-display"></span>
+                    </p>
+                </div>
+            </div>
+            <div class="course-actions">
+                <div class="btn-row">
+                    <button class="btn-start-session">
+                        <i class="fas fa-play-circle"></i>
+                        Join Session
+                    </button>
+                    <button class="btn-chat-teacher">
+                        <i class="fas fa-comments"></i>
+                        Chat with Teacher
+                    </button>
+                </div>
+                <button class="btn-mark-complete">
+                    <i class="fas fa-check-circle"></i>
+                    Mark as Completed
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <!-- JavaScript -->
+    <script src="js/auth.js"></script>
+    <script src="js/my-courses.js"></script>
+</body>
+</html> 

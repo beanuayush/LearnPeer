@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Teaching - LearnPeer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-container">
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="discover.html">Discover</a>
+                <a href="teach.html">Teach</a>
+                <a href="my-courses.html">My Courses</a>
+                <a href="my-teaching.html" class="teaching-link active">
+                    My Teaching
+                </a>
+                <a href="chat.html"><i class="fas fa-comments"></i></a>
+            </div>
+            <div class="auth-content">
+                <div class="auth-links">
+                    <a href="#" class="btn-profile"><i class="fas fa-user"></i></a>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="teaching-container">
+        <div class="teaching-section">
+            <div class="teaching-header">
+                <h1>My Teaching</h1>
+                <a href="teach.html" class="btn-create-course">
+                    <i class="fas fa-plus"></i>
+                    Create New Course
+                </a>
+            </div>
+            <div class="teaching-grid" id="teachingGrid">
+                <!-- Teaching cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <div class="booked-sessions-section">
+            <div class="section-header">
+                <h2>Booked Sessions</h2>
+            </div>
+            <div class="sessions-grid" id="sessionsGrid">
+                <!-- Session cards will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <!-- Template for teaching card -->
+    <template id="teachingCardTemplate">
+        <div class="teaching-card">
+            <div class="teaching-info">
+                <div class="teaching-header">
+                    <h3 class="subject-name"></h3>
+                </div>
+                <div class="teaching-details">
+                    <p class="topics"></p>
+                </div>
+                <div class="teaching-actions">
+                    <button class="btn-delete-teaching">
+                        <i class="fas fa-trash"></i>
+                        Delete Course
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for session card -->
+    <template id="sessionCardTemplate">
+        <div class="session-card">
+            <div class="session-info">
+                <div class="session-header">
+                    <h3 class="session-subject"></h3>
+                    <p class="session-status"></p>
+                </div>
+                <div class="session-details">
+                    <p><i class="fas fa-calendar"></i> <span class="session-date"></span></p>
+                    <p><i class="fas fa-clock"></i> <span class="session-time"></span></p>
+                    <p><i class="fas fa-user"></i> Student: <span class="student-count"></span></p>
+                    <p><i class="fas fa-rupee-sign"></i> Rate: ₹30/hr</p>
+                </div>
+                <div class="session-actions">
+                    <button class="btn-join-session">
+                        <i class="fas fa-video"></i>
+                        Start Session
+                    </button>
+                    <button class="btn-cancel-session">
+                        <i class="fas fa-times"></i>
+                        Cancel Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/my-teaching.js"></script>
+</body>
+</html> 

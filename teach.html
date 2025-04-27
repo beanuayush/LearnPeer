@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teach - LearnPeer</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-container">
+            <nav class="nav-links">
+                <a href="discover.html">Discover</a>
+                <a href="teach.html" class="active">Teach</a>
+                <a href="my-courses.html">My Courses</a>
+                <a href="my-teaching.html">My Teaching</a>
+                <a href="chat.html" class="chat-link">
+                    <i class="fas fa-comments"></i>
+                    <span class="notification-badge hidden">0</span>
+                </a>
+            </nav>
+            <div class="auth-content">
+                <div class="auth-links" id="authLinks">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="signup.html" class="btn-signup">Sign Up</a>
+                </div>
+                <div class="user-menu hidden" id="userMenu">
+                    <a href="profile.html" class="btn-profile">
+                        <i class="fas fa-user"></i>
+                        Profile
+                    </a>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="teach-container">
+        <section class="teach-section">
+            <h1>Start Teaching</h1>
+            <p class="teach-subtitle">Share your knowledge and earn by teaching your favorite subjects</p>
+            
+            <form id="teachForm" class="teach-form">
+                <div class="form-group">
+                    <label for="subject">Subject You Want to Teach*</label>
+                    <input type="text" id="subject" name="subject" required 
+                           placeholder="e.g., Mathematics, Physics, Programming">
+                    <small class="form-hint">Enter the main subject you specialize in</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="topics">Topics Covered*</label>
+                    <textarea id="topics" name="topics" rows="4" required
+                              placeholder="List the specific topics you can teach in this subject&#10;Example:&#10;- Calculus&#10;- Linear Algebra&#10;- Differential Equations"></textarea>
+                    <small class="form-hint">List specific topics to help students find you better</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="experience">Teaching Experience</label>
+                    <textarea id="experience" name="experience" rows="3"
+                              placeholder="Share your teaching experience or qualifications"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="hourlyRate">Hourly Rate (₹)*</label>
+                    <div class="rate-input">
+                        <span class="currency-symbol">₹</span>
+                        <input type="number" id="hourlyRate" name="hourlyRate" required
+                               min="20" step="10" placeholder="50">
+                    </div>
+                    <small class="form-hint">Minimum rate is ₹20 per hour</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        Start Teaching
+                    </button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="js/auth.js"></script>
+    <script src="js/teach.js"></script>
+</body>
+</html> 

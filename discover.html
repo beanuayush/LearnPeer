@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Teachers - LearnPeer</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-container">
+            <nav class="nav-links">
+                <a href="discover.html" class="active">Discover</a>
+                <a href="teach.html">Teach</a>
+                <a href="my-courses.html">My Courses</a>
+                <a href="my-teaching.html">My Teaching</a>
+                <a href="chat.html" class="chat-link">
+                    <i class="fas fa-comments"></i>
+                    <span class="notification-badge hidden">0</span>
+                </a>
+            </nav>
+            <div class="auth-content">
+                <div class="auth-links" id="authLinks">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="signup.html" class="btn-signup">Sign Up</a>
+                </div>
+                <div class="user-menu hidden" id="userMenu">
+                    <a href="profile.html" class="btn-profile">Profile</a>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="discover-container">
+        <section class="search-section">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by subject or topic...">
+                <button id="searchButton">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div class="filters">
+                <div class="price-filter">
+                    <label for="maxPrice">Max Price (₹)</label>
+                    <input type="number" id="maxPrice" min="20" step="10" placeholder="Max hourly rate">
+                </div>
+                <button id="applyFilters" class="btn-filter">Apply Filters</button>
+            </div>
+        </section>
+
+        <section class="teachers-grid">
+            <!-- Teachers will be dynamically added here -->
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Loading teachers...</span>
+            </div>
+        </section>
+
+        <!-- Teacher Details Modal -->
+        <div id="teacherModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div class="teacher-details">
+                    <!-- Teacher details will be dynamically added here -->
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-book">
+                        <i class="fas fa-calendar-check"></i>
+                        Book Session
+                    </button>
+                    <button class="btn-chat">
+                        <i class="fas fa-comments"></i>
+                        Chat with Teacher
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Template for teacher card -->
+    <template id="teacherCardTemplate">
+        <div class="teacher-card">
+            <div class="teacher-info">
+                <div class="teacher-header">
+                    <h3 class="teacher-name"></h3>
+                    <p class="teacher-subject"></p>
+                </div>
+                <div class="teacher-card-details">
+                    <div class="topics-preview"></div>
+                    <p class="teacher-fullname"></p>
+                </div>
+                <p class="hourly-rate">
+                    <i class="fas fa-rupee-sign"></i>
+                    <span class="rate-amount"></span>/hour
+                </p>
+            </div>
+            <button class="btn-view-details">View Details</button>
+        </div>
+    </template>
+
+    <!-- JavaScript -->
+    <script src="js/auth.js"></script>
+    <script src="js/discover.js"></script>
+</body>
+</html> 

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - LearnPeer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-links">
+            <a href="discover.html">Discover</a>
+            <a href="teach.html">Teach</a>
+            <a href="my-courses.html">My Courses</a>
+            <a href="my-teaching.html">My Teaching</a>
+            <a href="chat.html" class="active"><i class="fas fa-comments"></i></a>
+        </div>
+        <div class="user-menu">
+            <a href="profile.html" class="btn-profile">Profile</a>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Chat Interface -->
+    <div class="chat-container">
+        <div class="chat-sidebar">
+            <div class="chat-header">
+                <h2>Messages</h2>
+            </div>
+            <div class="chat-contacts" id="chatContacts">
+                <!-- Contacts will be loaded here -->
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading contacts...</span>
+                </div>
+            </div>
+        </div>
+        <div class="chat-main">
+            <div class="chat-header" id="chatHeader">
+                <h2>Select a conversation</h2>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be loaded here -->
+                <div class="chat-placeholder">
+                    <i class="fas fa-comments"></i>
+                    <p>Select a conversation to start chatting</p>
+                </div>
+            </div>
+            <div class="chat-input" id="chatInput" style="display: none;">
+                <form id="messageForm">
+                    <input type="text" id="messageText" placeholder="Type your message..." autocomplete="off">
+                    <button type="submit">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html> 

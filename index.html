@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnPeer - Peer-to-Peer Learning Platform</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="index.html">LearnPeer</a>
+        </div>
+        <div class="nav-container">
+            <nav class="nav-links">
+                <a href="index.html" class="active">Home</a>
+                <a href="discover.html">Discover</a>
+                <a href="teach.html">Teach</a>
+                <a href="my-courses.html">My Courses</a>
+                <a href="my-teaching.html" class="teaching-link">
+                    My Teaching
+                    <span class="notification-badge hidden" id="teachingNotification">1</span>
+                </a>
+                <a href="chat.html" class="chat-link">
+                    <i class="fas fa-comments"></i>
+                    <span class="notification-badge hidden">0</span>
+                </a>
+            </nav>
+            <div class="auth-content">
+                <div class="auth-links" id="authLinks">
+                    <a href="login.html" class="btn-login">Login</a>
+                    <a href="signup.html" class="btn-signup">Sign Up</a>
+                </div>
+                <div class="user-menu hidden" id="userMenu">
+                    <a href="profile.html" class="btn-profile">Profile</a>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Learn from Your Peers</h1>
+                <p>Connect with expert tutors and master new skills through personalized learning experiences.</p>
+                <div class="hero-buttons">
+                    <a href="discover.html" class="btn-primary">Find a Tutor</a>
+                    <a href="teach.html" class="btn-secondary">Become a Tutor</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="featured-subjects">
+            <h2>Popular Subjects</h2>
+            <div class="subject-grid">
+                <div class="subject-card">
+                    <i class="fas fa-calculator"></i>
+                    <h3>Mathematics</h3>
+                </div>
+                <div class="subject-card">
+                    <i class="fas fa-laptop-code"></i>
+                    <h3>Programming</h3>
+                </div>
+                <div class="subject-card">
+                    <i class="fas fa-atom"></i>
+                    <h3>Physics</h3>
+                </div>
+                <div class="subject-card">
+                    <i class="fas fa-language"></i>
+                    <h3>Languages</h3>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="js/auth.js"></script>
+    <script src="js/notifications.js"></script>
+    <script>
+        // Check unread messages
+        function checkUnreadMessages(userId) {
+            const notificationBadge = document.querySelector('.notification-badge');
+            firebase.firestore()
+                .collection('messages')
+                .where('to', '==', userId)
+                .where('read', '==', false)
+                .onSnapshot((snapshot) => {
+                    const count = snapshot.size;
+                    if (count > 0 && notificationBadge) {
+                        notificationBadge.textContent = count;
+                        notificationBadge.classList.remove('hidden');
+                    } else if (notificationBadge) {
+                        notificationBadge.classList.add('hidden');
+                    }
+                });
+        }
+    </script>
+</body>
+</html> 
