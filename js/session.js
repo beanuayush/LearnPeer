@@ -178,13 +178,24 @@ async function setupPeerConnection() {
     peerConnection = new RTCPeerConnection(configuration);
 
     // Add local stream tracks to peer connection
-    localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-    });
+    if (localStream) {
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+            console.log('Added local track:', track);
+        });
+    } else {
+        console.error('Local stream is not available when setting up peer connection!');
+    }
 
     // Handle incoming stream
     peerConnection.ontrack = (event) => {
-        remoteVideo.srcObject = event.streams[0];
+        console.log('ontrack event fired', event);
+        if (event.streams && event.streams[0]) {
+            remoteVideo.srcObject = event.streams[0];
+            console.log('Remote stream tracks:', event.streams[0].getTracks());
+        } else {
+            console.warn('ontrack fired but no streams found');
+        }
     };
 
     // Handle ICE candidates
