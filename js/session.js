@@ -29,14 +29,10 @@ let remoteDescriptionSet = false;
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Session page loaded, waiting for auth...');
-    
-    // Wait for auth state to be ready
     firebase.auth().onAuthStateChanged(async (user) => {
         try {
             console.log('Auth state changed:', user ? 'User logged in' : 'No user');
-            
             if (!user) {
-                console.log('No user found, redirecting to login');
                 window.location.href = 'login.html';
                 return;
             }
@@ -44,38 +40,29 @@ document.addEventListener('DOMContentLoaded', () => {
             // Get session ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             sessionId = urlParams.get('id');
-            console.log('Session ID from URL:', sessionId);
-
             if (!sessionId) {
-                console.log('No session ID provided');
                 alert('No session ID provided');
                 window.location.href = 'index.html';
                 return;
             }
 
             // Get booking details
-            console.log('Fetching booking details...');
             const bookingDoc = await firebase.firestore()
                 .collection('bookings')
                 .doc(sessionId)
                 .get();
 
             if (!bookingDoc.exists) {
-                console.log('Booking not found');
                 alert('Session not found');
                 window.location.href = 'index.html';
                 return;
             }
 
             const booking = bookingDoc.data();
-            console.log('Booking data:', booking);
-            
             isTeacher = user.uid === booking.teacherId;
-            console.log('User role:', isTeacher ? 'Teacher' : 'Student');
 
             // Verify user is part of this session
             if (user.uid !== booking.teacherId && user.uid !== booking.studentId) {
-                console.log('User not authorized for this session');
                 alert('You are not authorized to join this session');
                 window.location.href = 'index.html';
                 return;
@@ -83,33 +70,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Get other participant's name
             const otherUserId = isTeacher ? booking.studentId : booking.teacherId;
-            console.log('Fetching other participant details:', otherUserId);
-            
             const otherUserDoc = await firebase.firestore()
                 .collection('users')
                 .doc(otherUserId)
                 .get();
-
             if (otherUserDoc.exists) {
                 remoteName.textContent = otherUserDoc.data().fullName;
-                console.log('Other participant name set:', otherUserDoc.data().fullName);
             }
 
-            // Initialize WebRTC
+            // 1. Setup local stream
             console.log('Setting up local stream...');
             await setupLocalStream();
-            
+
+            // 2. Setup peer connection (add tracks before signaling)
             console.log('Setting up peer connection...');
             await setupPeerConnection();
 
-            // Create or join session room
-            console.log('Creating/joining session room...');
+            // 3. Create or join session room
             sessionDoc = firebase.firestore()
                 .collection('sessions')
                 .doc(sessionId);
 
-            // Listen for remote ICE candidates
-            console.log('Setting up ICE candidate listener...');
+            // 4. Listen for remote ICE candidates
             sessionDoc.collection(isTeacher ? 'studentCandidates' : 'teacherCandidates')
                 .onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach((change) => {
@@ -121,27 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
-            // Handle connection based on role
-            console.log('Handling connection for', isTeacher ? 'teacher' : 'student');
+            // 5. Handle connection based on role
             if (isTeacher) {
                 await handleTeacherConnection();
             } else {
                 await handleStudentConnection();
             }
 
-            // Setup controls
-            console.log('Setting up controls...');
+            // 6. Setup controls
             setupControls();
 
         } catch (error) {
             console.error('Error initializing session:', error);
-            console.error('Error stack:', error.stack);
-            console.error('Error details:', {
-                sessionId,
-                userId: firebase.auth().currentUser?.uid,
-                isTeacher,
-                error: error.message
-            });
             alert('Failed to initialize session. Please try again. Error: ' + error.message);
         }
     });
@@ -166,6 +139,7 @@ async function setupLocalStream() {
         }
 
         localVideo.srcObject = localStream;
+        console.log('Local stream tracks:', localStream.getTracks());
     } catch (error) {
         console.error('Error accessing media devices:', error);
         alert('Failed to access camera and/or microphone. Please ensure they are connected and permissions are granted.');
@@ -192,6 +166,7 @@ async function setupPeerConnection() {
         console.log('ontrack event fired', event);
         if (event.streams && event.streams[0]) {
             remoteVideo.srcObject = event.streams[0];
+            remoteVideo.play().catch(e => console.warn('remoteVideo play() failed:', e));
             console.log('Remote stream tracks:', event.streams[0].getTracks());
         } else {
             console.warn('ontrack fired but no streams found');
@@ -245,23 +220,12 @@ async function handleTeacherConnection() {
 // Handle student's connection
 async function handleStudentConnection() {
     try {
-        console.log('Student: Setting up connection...');
-        
-        // Listen for offer
         sessionDoc.onSnapshot((snapshot) => {
             try {
-                console.log('Student: Received session update');
                 const data = snapshot.data();
-                
-                if (!data) {
-                    console.log('Student: No session data yet');
-                    return;
-                }
-
+                if (!data) return;
                 if (!peerConnection.currentRemoteDescription && data.offer) {
-                    console.log('Student: Processing offer');
                     const offerDescription = new RTCSessionDescription(data.offer);
-                    
                     setRemoteDescriptionAndFlush(offerDescription);
                 }
             } catch (error) {
@@ -316,18 +280,12 @@ function setupControls() {
             try {
                 // Stop all tracks
                 localStream.getTracks().forEach(track => track.stop());
-                
-                // Close peer connection
                 peerConnection.close();
-                
-                // Update session status
                 await sessionDoc.update({
                     status: 'ended',
                     endedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     endedBy: isTeacher ? 'teacher' : 'student'
                 });
-
-                // Redirect
                 window.location.href = isTeacher ? 'my-teaching.html' : 'my-courses.html';
             } catch (error) {
                 console.error('Error ending session:', error);
@@ -344,28 +302,17 @@ function setupControls() {
 async function toggleScreenShare() {
     try {
         if (!isScreenSharing) {
-            // Start screen sharing
             screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    cursor: "always"
-                },
+                video: { cursor: "always" },
                 audio: false
             });
-
-            // Replace video track in peer connection
             const videoTrack = screenStream.getVideoTracks()[0];
             const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
             await sender.replaceTrack(videoTrack);
-
-            // Update UI
             localVideo.srcObject = screenStream;
             isScreenSharing = true;
             toggleScreenShareBtn.classList.add('active');
-            
-            // Handle when user stops sharing
-            videoTrack.onended = () => {
-                stopScreenShare();
-            };
+            videoTrack.onended = () => { stopScreenShare(); };
         } else {
             stopScreenShare();
         }
@@ -377,15 +324,10 @@ async function toggleScreenShare() {
 
 function stopScreenShare() {
     if (screenStream) {
-        // Stop screen sharing
         screenStream.getTracks().forEach(track => track.stop());
-        
-        // Replace with camera track
         const videoTrack = localStream.getVideoTracks()[0];
         const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
         sender.replaceTrack(videoTrack);
-        
-        // Update UI
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         toggleScreenShareBtn.classList.remove('active');
@@ -400,4 +342,4 @@ window.addEventListener('beforeunload', () => {
     if (peerConnection) {
         peerConnection.close();
     }
-}); 
+});
