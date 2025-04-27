@@ -115,11 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === 'added') {
                             const candidate = new RTCIceCandidate(change.doc.data());
-                            if (remoteDescriptionSet) {
-                                peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding ICE candidate:', err));
-                            } else {
-                                pendingCandidates.push(candidate);
-                            }
+                            console.log('Received ICE candidate from Firestore');
+                            handleRemoteCandidate(candidate);
                         }
                     });
                 });
@@ -201,6 +198,16 @@ async function setupPeerConnection() {
     };
 }
 
+function handleRemoteCandidate(candidate) {
+    if (remoteDescriptionSet) {
+        console.log('Adding ICE candidate immediately');
+        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding ICE candidate:', err));
+    } else {
+        console.log('Queuing ICE candidate');
+        pendingCandidates.push(candidate);
+    }
+}
+
 // Handle teacher's connection
 async function handleTeacherConnection() {
     // Create and set offer
@@ -219,15 +226,9 @@ async function handleTeacherConnection() {
         const data = snapshot.data();
         if (!peerConnection.currentRemoteDescription && data?.answer) {
             const answerDescription = new RTCSessionDescription(data.answer);
-            peerConnection.setRemoteDescription(answerDescription);
+            setRemoteDescriptionAndFlush(answerDescription);
         }
     });
-
-    remoteDescriptionSet = true;
-    pendingCandidates.forEach(candidate => {
-        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding queued ICE candidate:', err));
-    });
-    pendingCandidates = [];
 }
 
 // Handle student's connection
@@ -250,28 +251,7 @@ async function handleStudentConnection() {
                     console.log('Student: Processing offer');
                     const offerDescription = new RTCSessionDescription(data.offer);
                     
-                    peerConnection.setRemoteDescription(offerDescription)
-                        .then(() => {
-                            console.log('Student: Creating answer');
-                            return peerConnection.createAnswer();
-                        })
-                        .then((answer) => {
-                            console.log('Student: Setting local description');
-                            return peerConnection.setLocalDescription(answer);
-                        })
-                        .then(() => {
-                            console.log('Student: Sending answer');
-                            return sessionDoc.update({
-                                answer: {
-                                    type: peerConnection.localDescription.type,
-                                    sdp: peerConnection.localDescription.sdp
-                                }
-                            });
-                        })
-                        .catch(error => {
-                            console.error('Student: Error in connection process:', error);
-                            throw error;
-                        });
+                    setRemoteDescriptionAndFlush(offerDescription);
                 }
             } catch (error) {
                 console.error('Student: Error handling session update:', error);
@@ -281,8 +261,12 @@ async function handleStudentConnection() {
         console.error('Student: Error in handleStudentConnection:', error);
         throw error;
     }
+}
 
+async function setRemoteDescriptionAndFlush(desc) {
+    await peerConnection.setRemoteDescription(desc);
     remoteDescriptionSet = true;
+    console.log('Remote description set. Flushing', pendingCandidates.length, 'queued ICE candidates.');
     pendingCandidates.forEach(candidate => {
         peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding queued ICE candidate:', err));
     });
