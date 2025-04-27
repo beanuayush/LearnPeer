@@ -10,8 +10,22 @@ const toggleScreenShareBtn = document.getElementById('toggleScreenShare');
 // WebRTC configuration
 const configuration = {
     iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }
-    ]
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        // Add a TURN server to help with connections in restrictive networks
+        { 
+            urls: 'turn:numb.viagenie.ca',
+            username: 'webrtc@live.com',
+            credential: 'muazkh'
+        }
+    ],
+    // Add these options to improve connection reliability
+    iceTransportPolicy: 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
 };
 
 let localStream;
@@ -23,16 +37,18 @@ let isVideoEnabled = true;
 let isAudioEnabled = true;
 let isScreenSharing = false;
 let screenStream;
-let pendingCandidates = [];
-let remoteDescriptionSet = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Session page loaded, waiting for auth...');
+    
+    // Wait for auth state to be ready
     firebase.auth().onAuthStateChanged(async (user) => {
         try {
             console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+            
             if (!user) {
+                console.log('No user found, redirecting to login');
                 window.location.href = 'login.html';
                 return;
             }
@@ -40,29 +56,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Get session ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             sessionId = urlParams.get('id');
+            console.log('Session ID from URL:', sessionId);
+
             if (!sessionId) {
+                console.log('No session ID provided');
                 alert('No session ID provided');
                 window.location.href = 'index.html';
                 return;
             }
 
             // Get booking details
+            console.log('Fetching booking details...');
             const bookingDoc = await firebase.firestore()
                 .collection('bookings')
                 .doc(sessionId)
                 .get();
 
             if (!bookingDoc.exists) {
+                console.log('Booking not found');
                 alert('Session not found');
                 window.location.href = 'index.html';
                 return;
             }
 
             const booking = bookingDoc.data();
+            console.log('Booking data:', booking);
+            
             isTeacher = user.uid === booking.teacherId;
+            console.log('User role:', isTeacher ? 'Teacher' : 'Student');
 
             // Verify user is part of this session
             if (user.uid !== booking.teacherId && user.uid !== booking.studentId) {
+                console.log('User not authorized for this session');
                 alert('You are not authorized to join this session');
                 window.location.href = 'index.html';
                 return;
@@ -70,51 +95,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Get other participant's name
             const otherUserId = isTeacher ? booking.studentId : booking.teacherId;
+            console.log('Fetching other participant details:', otherUserId);
+            
             const otherUserDoc = await firebase.firestore()
                 .collection('users')
                 .doc(otherUserId)
                 .get();
+
             if (otherUserDoc.exists) {
                 remoteName.textContent = otherUserDoc.data().fullName;
+                console.log('Other participant name set:', otherUserDoc.data().fullName);
             }
 
-            // 1. Setup local stream
+            // Initialize WebRTC
             console.log('Setting up local stream...');
             await setupLocalStream();
-
-            // 2. Setup peer connection (add tracks before signaling)
+            
             console.log('Setting up peer connection...');
             await setupPeerConnection();
 
-            // 3. Create or join session room
+            // Create or join session room
+            console.log('Creating/joining session room...');
             sessionDoc = firebase.firestore()
                 .collection('sessions')
                 .doc(sessionId);
 
-            // 4. Listen for remote ICE candidates
+            // Listen for remote ICE candidates
+            console.log('Setting up ICE candidate listener...');
             sessionDoc.collection(isTeacher ? 'studentCandidates' : 'teacherCandidates')
                 .onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === 'added') {
+                            console.log('New ICE candidate received');
                             const candidate = new RTCIceCandidate(change.doc.data());
-                            console.log('Received ICE candidate from Firestore');
-                            handleRemoteCandidate(candidate);
+                            peerConnection.addIceCandidate(candidate)
+                                .catch(err => console.error('Error adding ICE candidate:', err));
                         }
                     });
                 });
 
-            // 5. Handle connection based on role
+            // Handle connection based on role
+            console.log('Handling connection for', isTeacher ? 'teacher' : 'student');
             if (isTeacher) {
                 await handleTeacherConnection();
             } else {
                 await handleStudentConnection();
             }
 
-            // 6. Setup controls
+            // Setup controls
+            console.log('Setting up controls...');
             setupControls();
 
         } catch (error) {
             console.error('Error initializing session:', error);
+            console.error('Error stack:', error.stack);
+            console.error('Error details:', {
+                sessionId,
+                userId: firebase.auth().currentUser?.uid,
+                isTeacher,
+                error: error.message
+            });
             alert('Failed to initialize session. Please try again. Error: ' + error.message);
         }
     });
@@ -139,7 +179,6 @@ async function setupLocalStream() {
         }
 
         localVideo.srcObject = localStream;
-        console.log('Local stream tracks:', localStream.getTracks());
     } catch (error) {
         console.error('Error accessing media devices:', error);
         alert('Failed to access camera and/or microphone. Please ensure they are connected and permissions are granted.');
@@ -152,81 +191,160 @@ async function setupPeerConnection() {
     peerConnection = new RTCPeerConnection(configuration);
 
     // Add local stream tracks to peer connection
-    if (localStream) {
-        localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-            console.log('Added local track:', track);
-        });
-    } else {
-        console.error('Local stream is not available when setting up peer connection!');
-    }
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
 
     // Handle incoming stream
     peerConnection.ontrack = (event) => {
-        console.log('ontrack event fired', event);
-        if (event.streams && event.streams[0]) {
-            remoteVideo.srcObject = event.streams[0];
-            remoteVideo.play().catch(e => console.warn('remoteVideo play() failed:', e));
-            console.log('Remote stream tracks:', event.streams[0].getTracks());
-        } else {
-            console.warn('ontrack fired but no streams found');
-        }
+        console.log('Received remote track:', event.streams[0]);
+        remoteVideo.srcObject = event.streams[0];
     };
 
     // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
+            console.log('New ICE candidate:', event.candidate);
             const candidatesCollection = sessionDoc.collection(
                 isTeacher ? 'teacherCandidates' : 'studentCandidates'
             );
             candidatesCollection.add(event.candidate.toJSON());
         }
     };
+
+    // Add connection state change handler
+    peerConnection.onconnectionstatechange = () => {
+        console.log('Connection state changed:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'failed') {
+            console.error('Connection failed. Attempting to reconnect...');
+            attemptReconnection();
+        }
+    };
+
+    // Add ICE connection state change handler
+    peerConnection.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', peerConnection.iceConnectionState);
+        if (peerConnection.iceConnectionState === 'failed') {
+            console.error('ICE connection failed');
+            attemptReconnection();
+        }
+    };
+
+    // Add signaling state change handler
+    peerConnection.onsignalingstatechange = () => {
+        console.log('Signaling state:', peerConnection.signalingState);
+    };
 }
 
-function handleRemoteCandidate(candidate) {
-    if (remoteDescriptionSet) {
-        console.log('Adding ICE candidate immediately');
-        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding ICE candidate:', err));
-    } else {
-        console.log('Queuing ICE candidate');
-        pendingCandidates.push(candidate);
+// Function to attempt reconnection
+async function attemptReconnection() {
+    try {
+        console.log('Attempting to reconnect...');
+        
+        // Close the existing connection
+        if (peerConnection) {
+            peerConnection.close();
+        }
+        
+        // Create a new peer connection
+        await setupPeerConnection();
+        
+        // Re-establish the connection based on role
+        if (isTeacher) {
+            await handleTeacherConnection();
+        } else {
+            await handleStudentConnection();
+        }
+        
+        console.log('Reconnection attempt completed');
+    } catch (error) {
+        console.error('Error during reconnection:', error);
+        alert('Failed to reconnect. Please refresh the page and try again.');
     }
 }
 
 // Handle teacher's connection
 async function handleTeacherConnection() {
-    // Create and set offer
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
+    try {
+        console.log('Teacher: Creating offer...');
+        // Create and set offer
+        const offer = await peerConnection.createOffer();
+        console.log('Teacher: Setting local description...');
+        await peerConnection.setLocalDescription(offer);
 
-    await sessionDoc.set({
-        offer: {
-            type: offer.type,
-            sdp: offer.sdp
-        }
-    });
+        console.log('Teacher: Saving offer to Firestore...');
+        await sessionDoc.set({
+            offer: {
+                type: offer.type,
+                sdp: offer.sdp
+            }
+        });
 
-    // Listen for answer
-    sessionDoc.onSnapshot((snapshot) => {
-        const data = snapshot.data();
-        if (!peerConnection.currentRemoteDescription && data?.answer) {
-            const answerDescription = new RTCSessionDescription(data.answer);
-            setRemoteDescriptionAndFlush(answerDescription);
-        }
-    });
+        // Listen for answer
+        console.log('Teacher: Listening for answer...');
+        sessionDoc.onSnapshot((snapshot) => {
+            const data = snapshot.data();
+            if (!data) {
+                console.log('Teacher: No session data yet');
+                return;
+            }
+            
+            if (!peerConnection.currentRemoteDescription && data?.answer) {
+                console.log('Teacher: Received answer, setting remote description...');
+                const answerDescription = new RTCSessionDescription(data.answer);
+                peerConnection.setRemoteDescription(answerDescription)
+                    .then(() => console.log('Teacher: Remote description set successfully'))
+                    .catch(err => console.error('Teacher: Error setting remote description:', err));
+            }
+        });
+    } catch (error) {
+        console.error('Teacher: Error in handleTeacherConnection:', error);
+        throw error;
+    }
 }
 
 // Handle student's connection
 async function handleStudentConnection() {
     try {
+        console.log('Student: Setting up connection...');
+        
+        // Listen for offer
         sessionDoc.onSnapshot((snapshot) => {
             try {
+                console.log('Student: Received session update');
                 const data = snapshot.data();
-                if (!data) return;
+                
+                if (!data) {
+                    console.log('Student: No session data yet');
+                    return;
+                }
+
                 if (!peerConnection.currentRemoteDescription && data.offer) {
+                    console.log('Student: Processing offer');
                     const offerDescription = new RTCSessionDescription(data.offer);
-                    setRemoteDescriptionAndFlush(offerDescription);
+                    
+                    peerConnection.setRemoteDescription(offerDescription)
+                        .then(() => {
+                            console.log('Student: Creating answer');
+                            return peerConnection.createAnswer();
+                        })
+                        .then((answer) => {
+                            console.log('Student: Setting local description');
+                            return peerConnection.setLocalDescription(answer);
+                        })
+                        .then(() => {
+                            console.log('Student: Sending answer');
+                            return sessionDoc.update({
+                                answer: {
+                                    type: peerConnection.localDescription.type,
+                                    sdp: peerConnection.localDescription.sdp
+                                }
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Student: Error in connection process:', error);
+                            throw error;
+                        });
                 }
             } catch (error) {
                 console.error('Student: Error handling session update:', error);
@@ -236,16 +354,6 @@ async function handleStudentConnection() {
         console.error('Student: Error in handleStudentConnection:', error);
         throw error;
     }
-}
-
-async function setRemoteDescriptionAndFlush(desc) {
-    await peerConnection.setRemoteDescription(desc);
-    remoteDescriptionSet = true;
-    console.log('Remote description set. Flushing', pendingCandidates.length, 'queued ICE candidates.');
-    pendingCandidates.forEach(candidate => {
-        peerConnection.addIceCandidate(candidate).catch(err => console.error('Error adding queued ICE candidate:', err));
-    });
-    pendingCandidates = [];
 }
 
 // Setup control buttons
@@ -280,12 +388,18 @@ function setupControls() {
             try {
                 // Stop all tracks
                 localStream.getTracks().forEach(track => track.stop());
+                
+                // Close peer connection
                 peerConnection.close();
+                
+                // Update session status
                 await sessionDoc.update({
                     status: 'ended',
                     endedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     endedBy: isTeacher ? 'teacher' : 'student'
                 });
+
+                // Redirect
                 window.location.href = isTeacher ? 'my-teaching.html' : 'my-courses.html';
             } catch (error) {
                 console.error('Error ending session:', error);
@@ -302,17 +416,28 @@ function setupControls() {
 async function toggleScreenShare() {
     try {
         if (!isScreenSharing) {
+            // Start screen sharing
             screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: { cursor: "always" },
+                video: {
+                    cursor: "always"
+                },
                 audio: false
             });
+
+            // Replace video track in peer connection
             const videoTrack = screenStream.getVideoTracks()[0];
             const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
             await sender.replaceTrack(videoTrack);
+
+            // Update UI
             localVideo.srcObject = screenStream;
             isScreenSharing = true;
             toggleScreenShareBtn.classList.add('active');
-            videoTrack.onended = () => { stopScreenShare(); };
+            
+            // Handle when user stops sharing
+            videoTrack.onended = () => {
+                stopScreenShare();
+            };
         } else {
             stopScreenShare();
         }
@@ -324,10 +449,15 @@ async function toggleScreenShare() {
 
 function stopScreenShare() {
     if (screenStream) {
+        // Stop screen sharing
         screenStream.getTracks().forEach(track => track.stop());
+        
+        // Replace with camera track
         const videoTrack = localStream.getVideoTracks()[0];
         const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
         sender.replaceTrack(videoTrack);
+        
+        // Update UI
         localVideo.srcObject = localStream;
         isScreenSharing = false;
         toggleScreenShareBtn.classList.remove('active');
@@ -342,4 +472,4 @@ window.addEventListener('beforeunload', () => {
     if (peerConnection) {
         peerConnection.close();
     }
-});
+}); 
