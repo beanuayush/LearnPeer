@@ -6,6 +6,8 @@ const toggleVideoBtn = document.getElementById('toggleVideo');
 const toggleAudioBtn = document.getElementById('toggleAudio');
 const endCallBtn = document.getElementById('endCall');
 const toggleScreenShareBtn = document.getElementById('toggleScreenShare');
+const connectionStatus = document.getElementById('connectionStatus');
+const statusText = connectionStatus ? connectionStatus.querySelector('.status-text') : null;
 
 // WebRTC configuration
 const configuration = {
@@ -190,6 +192,9 @@ async function setupLocalStream() {
 async function setupPeerConnection() {
     peerConnection = new RTCPeerConnection(configuration);
 
+    // Update connection status to connecting
+    updateConnectionStatus('connecting');
+
     // Add local stream tracks to peer connection
     localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStream);
@@ -199,6 +204,8 @@ async function setupPeerConnection() {
     peerConnection.ontrack = (event) => {
         console.log('Received remote track:', event.streams[0]);
         remoteVideo.srcObject = event.streams[0];
+        // Update connection status to connected when we receive a track
+        updateConnectionStatus('connected');
     };
 
     // Handle ICE candidates
@@ -215,8 +222,13 @@ async function setupPeerConnection() {
     // Add connection state change handler
     peerConnection.onconnectionstatechange = () => {
         console.log('Connection state changed:', peerConnection.connectionState);
-        if (peerConnection.connectionState === 'failed') {
+        if (peerConnection.connectionState === 'connected') {
+            updateConnectionStatus('connected');
+        } else if (peerConnection.connectionState === 'connecting') {
+            updateConnectionStatus('connecting');
+        } else if (peerConnection.connectionState === 'failed') {
             console.error('Connection failed. Attempting to reconnect...');
+            updateConnectionStatus('failed');
             attemptReconnection();
         }
     };
@@ -224,8 +236,13 @@ async function setupPeerConnection() {
     // Add ICE connection state change handler
     peerConnection.oniceconnectionstatechange = () => {
         console.log('ICE connection state:', peerConnection.iceConnectionState);
-        if (peerConnection.iceConnectionState === 'failed') {
+        if (peerConnection.iceConnectionState === 'connected') {
+            updateConnectionStatus('connected');
+        } else if (peerConnection.iceConnectionState === 'checking') {
+            updateConnectionStatus('connecting');
+        } else if (peerConnection.iceConnectionState === 'failed') {
             console.error('ICE connection failed');
+            updateConnectionStatus('failed');
             attemptReconnection();
         }
     };
@@ -472,4 +489,24 @@ window.addEventListener('beforeunload', () => {
     if (peerConnection) {
         peerConnection.close();
     }
-}); 
+});
+
+// Function to update connection status UI
+function updateConnectionStatus(status) {
+    if (!connectionStatus || !statusText) return;
+    
+    // Remove all status classes
+    connectionStatus.classList.remove('connecting', 'connected', 'failed');
+    
+    // Add the appropriate class
+    connectionStatus.classList.add(status);
+    
+    // Update the status text
+    if (status === 'connecting') {
+        statusText.textContent = 'Connecting...';
+    } else if (status === 'connected') {
+        statusText.textContent = 'Connected';
+    } else if (status === 'failed') {
+        statusText.textContent = 'Connection Failed';
+    }
+} 
